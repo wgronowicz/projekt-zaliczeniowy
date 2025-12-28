@@ -1,26 +1,24 @@
 {
-    "id": "EBC57BC0",
-    "path": "~/Desktop/projekt-zaliczeniowy/test.R",
-    "project_path": "test.R",
+    "id": "2CB42F5D",
+    "path": "~/Desktop/projekt-zaliczeniowy/s-and-p-500.R",
+    "project_path": "s-and-p-500.R",
     "type": "r_source",
     "hash": "0",
     "contents": "",
-    "dirty": true,
-    "created": 1766935572219.0,
+    "dirty": false,
+    "created": 1766942060600.0,
     "source_on_save": false,
     "relative_order": 1,
     "properties": {
         "source_window_id": "",
-        "Source": "Source",
-        "cursorPosition": "0,44",
-        "scrollLine": "0"
+        "Source": "Source"
     },
     "folds": "",
-    "lastKnownWriteTime": 1766935572,
+    "lastKnownWriteTime": 1766942060,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1766939071953,
+    "last_content_update": 1766942060,
     "read_only": false,
     "read_only_alternatives": []
 }
