@@ -2,6 +2,8 @@
 
 library(dplyr)
 library(tidyverse)
+library(ggplot2)
+library(tidyr)
 
 # Load data
 
@@ -127,4 +129,53 @@ momentum_monthly_returns <- momentum_monthly_returns %>%
 
 momentum_max_drawdown <- min(momentum_monthly_returns$Drawdown)
 
+# Test t różnicy średnich stóp zwrotu
+## z miesięcznych zwrotów usuwam pierwsze 13 miesięcy, gdy momentum nie miało wyników
 
+reduced_index_monthly_returns <- index_monthly_returns[-(1:13),]
+reduced_momentum_monthly_returns <- momentum_monthly_returns[-(1:13),]
+
+t_test_result <- t.test(
+  reduced_index_monthly_returns$index_return,
+  reduced_momentum_monthly_returns$Strategy_Return, 
+  paired = TRUE
+)
+
+print(t_test_result)
+
+# wykres krzywych kapitału
+
+# Łączymy dane w jedną strukturę do wykresu
+comparison_data <- data.frame(
+  Date = as.Date(reduced_index_monthly_returns$Date),
+  Return_BH = reduced_index_monthly_returns$index_return,
+  Return_Mom = reduced_momentum_monthly_returns$Strategy_Return
+) %>%
+  mutate(
+    # Obliczamy kapitał (Equity) startując od 1.0
+    Equity_BH = cumprod(1 + Return_BH),
+    Equity_Mom = cumprod(1 + Return_Mom),
+    # Obliczamy bieżące obsunięcia (Drawdowns) dla obu strategii
+    DD_BH = (Equity_BH / cummax(Equity_BH)) - 1,
+    DD_Mom = (Equity_Mom / cummax(Equity_Mom)) - 1
+  )
+
+
+# Transformacja do formatu long dla ggplot
+equity_long <- comparison_data %>%
+  select(Date, Equity_BH, Equity_Mom) %>%
+  pivot_longer(-Date, names_to = "Strategy", values_to = "Value")
+
+ggplot(equity_long, aes(x = Date, y = Value, color = Strategy)) +
+  geom_line(linewidth = 1) +
+  scale_color_manual(
+    values = c("Equity_BH" = "#3498db", "Equity_Mom" = "#e74c3c"),
+    labels = c("Buy & Hold (S&P 500)", "Momentum 12-1")
+  ) +
+  labs(
+    title = "Skumulowany wzrost kapitału",
+    subtitle = "Porównanie strategii na danych oczyszczonych (po 13 mies.)",
+    y = "Wartość portfela (USD)", x = ""
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
