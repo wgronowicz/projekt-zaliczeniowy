@@ -1,3 +1,9 @@
+##############################
+# Title: S&P 500
+# @: Szymon Zagroba, Ireneusz Sołtykiewicz, Wojciech Gronowicz
+# Date: 05.01.2026
+##############################
+
 # Load libraries
 
 library(dplyr)
@@ -11,13 +17,11 @@ prices <- read.csv("data-sets/s-and-p-500/prices.csv")
 tickerlist <- read.csv("data-sets/s-and-p-500/tickerlist.csv")
 returns <- read.csv("data-sets/s-and-p-500/returns.csv")
 
-# Annual rate of return Buy&Hold
+# Annual rate of return - Buy&Hold
 
 index_monthly_returns <- returns %>%
   mutate(index_return = rowMeans(select(., -Date), na.rm = TRUE)) %>%
   select(1, index_return)
-
-print(index_monthly_returns)
 
 index_annual_returns <- index_monthly_returns %>%
   mutate(
@@ -28,10 +32,8 @@ index_annual_returns <- index_monthly_returns %>%
   summarise(
     annual_return = prod(1 + index_return) - 1
   )
-
-print(index_annual_returns)
  
-#annual volatility - Buy&Hold
+# Annual volatility - Buy&Hold
 
 index_annual_volatility <- index_monthly_returns  %>%
   mutate(
@@ -43,8 +45,7 @@ index_annual_volatility <- index_monthly_returns  %>%
     annual_volatility = sd(index_return) * sqrt(12)
   )
 
-
-#sharpe ratio - Buy&Hold
+# Sharpe ratio - Buy&Hold
 
 us_treasury_bonds_rates <- 0.0347
 
@@ -57,10 +58,8 @@ index_annual_sharpe_ratio <- index_monthly_returns  %>%
   summarise(
     ((mean(index_return) * 12) - us_treasury_bonds_rates) / (sd(index_return) * sqrt(12))
   )
-  
 
-
-#max drawdown - Buy&Hold
+# Max drawdown - Buy&Hold
 
 index_monthly_returns <- index_monthly_returns %>%
   mutate(
@@ -71,9 +70,7 @@ index_monthly_returns <- index_monthly_returns %>%
 
 max_drawdown <- min(index_monthly_returns$Drawdown)
 
-#Momentum
-
-#
+# Annual rate of return - Momentum
 
 momentum_monthly_returns <- index_monthly_returns %>%
   mutate(
@@ -93,7 +90,7 @@ momentum_annual_returns <- momentum_monthly_returns %>%
     annual_return = prod(1 + Strategy_Return) - 1
   )
 
-#annual volatility - Momentum
+# Annual volatility - Momentum
 
 momentum_annual_volatility <- momentum_monthly_returns  %>%
   mutate(
@@ -105,8 +102,7 @@ momentum_annual_volatility <- momentum_monthly_returns  %>%
     momentum_volatility = sd(Strategy_Return) * sqrt(12)
   )
 
-
-#sharpe ratio - Momentum
+# Sharpe ratio - Momentum
 
 momentum_annual_sharpe_ratio <- momentum_monthly_returns  %>%
   mutate(
@@ -118,7 +114,7 @@ momentum_annual_sharpe_ratio <- momentum_monthly_returns  %>%
     ((mean(Strategy_Return) * 12) - us_treasury_bonds_rates) / (sd(Strategy_Return) * sqrt(12))
   )
 
-#max drawdown - Momentum
+# Max drawdown - Momentum
 
 momentum_monthly_returns <- momentum_monthly_returns %>%
   mutate(
@@ -129,8 +125,7 @@ momentum_monthly_returns <- momentum_monthly_returns %>%
 
 momentum_max_drawdown <- min(momentum_monthly_returns$Drawdown)
 
-# Test t różnicy średnich stóp zwrotu
-## z miesięcznych zwrotów usuwam pierwsze 13 miesięcy, gdy momentum nie miało wyników
+# T-test returns difference
 
 reduced_index_monthly_returns <- index_monthly_returns[-(1:13),]
 reduced_momentum_monthly_returns <- momentum_monthly_returns[-(1:13),]
@@ -141,27 +136,21 @@ t_test_result <- t.test(
   paired = TRUE
 )
 
-print(t_test_result)
+# Capital curves chart
 
-# wykres krzywych kapitału
-
-# Łączymy dane w jedną strukturę do wykresu
 comparison_data <- data.frame(
   Date = as.Date(reduced_index_monthly_returns$Date),
   Return_BH = reduced_index_monthly_returns$index_return,
   Return_Mom = reduced_momentum_monthly_returns$Strategy_Return
 ) %>%
   mutate(
-    # Obliczamy kapitał (Equity) startując od 1.0
     Equity_BH = cumprod(1 + Return_BH),
     Equity_Mom = cumprod(1 + Return_Mom),
-    # Obliczamy bieżące obsunięcia (Drawdowns) dla obu strategii
     DD_BH = (Equity_BH / cummax(Equity_BH)) - 1,
     DD_Mom = (Equity_Mom / cummax(Equity_Mom)) - 1
   )
 
 
-# Transformacja do formatu long dla ggplot
 equity_long <- comparison_data %>%
   select(Date, Equity_BH, Equity_Mom) %>%
   pivot_longer(-Date, names_to = "Strategy", values_to = "Value")
@@ -179,3 +168,20 @@ ggplot(equity_long, aes(x = Date, y = Value, color = Strategy)) +
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
+
+# Summary
+
+bh_sharpe_total <- (mean(reduced_index_monthly_returns$index_return) * 12 - 0.0347) / (sd(reduced_index_monthly_returns$index_return) * sqrt(12))
+mom_sharpe_total <- (mean(reduced_momentum_monthly_returns$Strategy_Return) * 12 - 0.0347) / (sd(reduced_momentum_monthly_returns$Strategy_Return) * sqrt(12))
+
+cat("--- WYNIKI S&P 500 ---\n",
+    "B&H Zysk śr. roczny:", mean(index_annual_returns$annual_return), "\n",
+    "B&H Zmienność roczna:", sd(reduced_index_monthly_returns$index_return) * sqrt(12), "\n",
+    "B&H Sharpe Ratio (całość):", bh_sharpe_total, "\n",
+    "B&H Max Drawdown:", max_drawdown, "\n",
+    "------------------------\n",
+    "Mom. Zysk śr. roczny:", mean(momentum_annual_returns$annual_return), "\n",
+    "Mom. Zmienność roczna:", sd(reduced_momentum_monthly_returns$Strategy_Return) * sqrt(12), "\n",
+    "Mom. Sharpe Ratio (całość):", mom_sharpe_total, "\n",
+    "Mom. Max Drawdown:", momentum_max_drawdown, "\n",
+    "P-value (czy różnica istotna?):", t_test_result$p.value, "\n")
